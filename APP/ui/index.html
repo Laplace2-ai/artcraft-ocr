@@ -1,0 +1,1102 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>ArtCraft OCR</title>
+<link rel="stylesheet" href="ui.css">
+<style>
+  html, body { height: 100%; background: var(--bg-canvas); overflow: hidden; }
+  .app { width: 100%; height: 100vh; border: 0; }
+  .menu span { cursor: pointer; }
+  .select { cursor: pointer; }
+
+  .para { position: relative; padding: 10px 16px 10px 18px; border-left: 2px solid transparent; }
+  .para + .para { border-top: 1px solid var(--border-quiet); }
+  .para:hover { background: rgba(255,255,255,.025); border-left-color: var(--border); }
+  .para .body { font-size: var(--fs-base); line-height: 1.75; color: var(--fg); outline: none;
+    white-space: pre-wrap; user-select: text; min-height: 1.4em;
+    /* 长串没有空格的文字（英文、URL、一整行识别结果）以前会顶出面板，用户只能把窗口拉大。
+       在板内换行，面板宽度不再由最长的那一行决定。 */
+    overflow-wrap: anywhere; word-break: break-word; }
+  .para .body:empty:before { content: attr(data-ph); color: var(--fg-faint); }
+  .para .meta { margin-top: 4px; display: flex; gap: 12px; align-items: center;
+    font-family: var(--font-mono); font-size: var(--fs-xs); color: var(--fg-faint); }
+  .para .meta .spacer { flex: 1; }
+  .para .mini {
+    width: 18px; height: 18px; line-height: 16px; text-align: center; cursor: pointer;
+    border: 1px solid var(--border); border-radius: 4px; color: var(--fg-muted);
+    font-size: 13px; user-select: none;
+  }
+  .para .mini:hover { border-color: var(--border-strong); color: var(--accent-hover); }
+  .para .mini.del:hover { border-color: var(--danger); color: var(--danger); }
+  .para .sizefield { display: inline-flex; align-items: center; gap: 3px; }
+  .para .mini-num { width: 46px; padding: 1px 4px; font-size: var(--fs-xs);
+    text-align: right; color: var(--fg-muted); }
+  .para .sizefield .unit { color: var(--fg-faint); }
+  .para .swatch i { width: 9px; height: 9px; border-radius: 2px;
+    border: 1px solid rgba(255,255,255,.42); display: inline-block; }
+  .empty-hint { padding: 18px 16px; color: var(--fg-faint); font-size: var(--fs-md); line-height: 1.7; }
+
+  /* 竖图会溢出：grid 的隐式行按内容撑高，子元素的 max-height:100% 因此对着
+     一个"不确定"的高度解析，浏览器直接忽略它，图片按原始尺寸铺出去。
+     flex + min-height:0 让容器高度确定，max-height 才真正生效。 */
+  .preview { position: relative; flex: 1; min-height: 0; display: flex;
+    align-items: center; justify-content: center; overflow: hidden;
+    margin: 14px 16px 16px; border: var(--bw) solid var(--border); border-radius: var(--r-l);
+    background: var(--bg-preview); }
+  .preview img { max-width: 100%; max-height: 100%; object-fit: contain; user-select: none; }
+  .preview.empty { border-style: dashed; }
+  .preview.picking { cursor: crosshair; }
+  .cropbox { position: absolute; border: 2px dashed var(--ok); background: rgba(0,247,255,.08);
+    pointer-events: none; display: none; }
+
+  .toast { position: fixed; left: 50%; bottom: 46px; transform: translateX(-50%);
+    background: var(--bg-panel); border: var(--bw) solid var(--border); border-radius: var(--r-s);
+    padding: 8px 14px; font-size: var(--fs-md); color: var(--fg); display: none; z-index: 60; }
+  .toast.bad { border-color: rgba(255,90,90,.6); color: #ffd0d0; }
+
+  .popover { position: fixed; z-index: 70; min-width: 132px; padding: 4px;
+    background: var(--bg-panel); border: var(--bw) solid var(--border); border-radius: var(--r-s);
+    box-shadow: 0 12px 30px rgba(0,0,0,.55); display: none; }
+  .popover div { padding: 6px 10px; font-size: var(--fs-md); color: var(--fg);
+    border-radius: 4px; cursor: pointer; white-space: nowrap; }
+  .popover div:hover { background: var(--accent-soft); color: var(--accent-hover); }
+  .popover div.on { color: var(--accent-hover); }
+  .popover .sep { height: 1px; background: var(--border-quiet); margin: 4px 2px; padding: 0; }
+
+  .mask { position: fixed; inset: 0; background: rgba(0,0,0,.55); display: none; z-index: 80; }
+  .dialog { position: fixed; left: 50%; top: 50%; transform: translate(-50%,-50%);
+    width: 620px; background: var(--bg-panel); border: var(--bw) solid var(--border);
+    border-radius: var(--r-m); box-shadow: 0 24px 60px rgba(0,0,0,.6); display: none; z-index: 81; }
+  .dialog h3 { font-family: var(--font-display); font-size: var(--fs-sm); letter-spacing: .14em;
+    text-transform: uppercase; color: var(--fg-faint); font-weight: 600;
+    padding: 14px 18px 10px; border-bottom: 1px solid var(--border-quiet); }
+  .dialog .content { padding: 16px 18px; display: flex; flex-direction: column; gap: 14px; }
+  .dialog .line { display: flex; flex-direction: column; gap: 6px; }
+  .dialog .line > label { font-size: var(--fs-md); color: var(--fg-muted); }
+  .dialog .row2 { display: flex; gap: 8px; align-items: center; }
+  .dialog input { flex: 1; font-family: var(--font-mono); font-size: var(--fs-md);
+    color: var(--fg); background: var(--bg-field); border: var(--bw) solid var(--border);
+    border-radius: var(--r-s); padding: 6px 9px; }
+  .dialog .note { font-size: var(--fs-sm); color: var(--fg-faint); line-height: 1.65;
+    white-space: pre-line; }
+  /* 解释贴住它解释的那个按钮，和下一组控件拉开距离。 */
+  .dialog .note.tight { margin-top: 2px; }
+  .dialog .line.spaced { margin-top: 14px; }
+
+  .btn.tiny { padding: 2px 8px; font-size: var(--fs-xs); }
+
+  .dialog.about { width: 420px; max-height: 88vh; overflow-y: auto; }
+  .about-body { min-height: 540px; box-sizing: border-box;
+    padding: 26px 22px 24px; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; text-align: center; gap: 4px; }
+  .about-icon { width: 36px; height: 36px; }
+  .about-title { font-size: 17px; font-weight: 600; color: var(--fg); margin-top: 2px; }
+  .about-sub { font-size: var(--fs-sm); color: var(--fg-muted); }
+  .about-ver { font-family: var(--font-mono); font-size: var(--fs-xs); color: var(--fg-faint); }
+  .about-desc { margin: 5px 0 0; font-size: var(--fs-sm); line-height: 1.55; color: var(--fg-muted); }
+  .about-h { margin-top: 10px; font-family: var(--font-display); font-size: 10.5px;
+    letter-spacing: .14em; color: var(--fg-faint); }
+  .about-list { margin: 2px 0 0; padding: 0; list-style: none; font-size: var(--fs-xs);
+    line-height: 1.6; color: var(--fg);
+    display: grid; grid-template-columns: 1fr 1fr; gap: 1px 14px; }
+  .about-dev { font-size: var(--fs-md); color: var(--fg); }
+  .about-note { font-size: var(--fs-xs); color: var(--fg-faint); }
+  .about-copy { margin-top: 8px; font-family: var(--font-mono); font-size: var(--fs-xs);
+    color: var(--fg-faint); }
+  .about-links { display: flex; gap: 8px; margin-top: 10px; }
+  .about-links .btn { padding: 3px 10px; font-size: var(--fs-xs); }
+  .about-logo { width: 32px; height: 32px; margin: 12px 0 6px; opacity: .95; }
+  .about-x { position: absolute; top: 6px; right: 12px; cursor: pointer;
+    color: var(--fg-faint); font-size: 18px; line-height: 1; }
+  .about-x:hover { color: var(--accent-hover); }
+  .dialog .footer { display: flex; gap: 8px; justify-content: flex-end;
+    padding: 12px 18px 16px; border-top: 1px solid var(--border-quiet); }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="titlebar">
+    <div class="brand">
+      <div class="mark" style="background-image:url('mark.png')"></div>
+      <div class="brand-name">ART<em>CRAFT</em> OCR</div>
+    </div>
+    <div class="menu" id="menu">
+      <span data-menu="file">文件</span><span data-menu="edit">编辑</span><span data-menu="help">帮助</span>
+    </div>
+    <div class="spacer"></div>
+    <div class="src-meta" id="srcMeta" data-i18n="src.none">未载入图片</div>
+  </div>
+
+  <div class="topcontrols">
+    <div class="row">
+      <div class="field"><span class="label" data-i18n="f.target">目标</span>
+        <div class="select" id="target" data-value="PhotoCraft">PhotoCraft</div></div>
+      <div class="field"><span class="label" data-i18n="f.lang">语种</span>
+        <div class="select" id="lang" data-value="ch">中文简体</div></div>
+      <div class="field"><span class="label" data-i18n="f.font">字体</span>
+        <div class="select" id="font" data-value="Microsoft YaHei" style="min-width:150px">Microsoft YaHei</div></div>
+      <div class="field"><span class="label" data-i18n="f.scale">比例</span>
+        <div class="select" id="scale" data-value="100" style="min-width:74px">100%</div></div>
+      <div class="field"><span class="label" data-i18n="f.anchor">落点</span>
+        <div class="select" id="anchor" data-value="原位置" style="min-width:96px">原位置</div></div>
+      <div class="field"><span class="label" data-i18n="f.mode">写入</span>
+        <div class="seg" id="mode">
+          <span class="on" data-mode="line" data-i18n="mode.point">点文字</span><span data-mode="para" data-i18n="mode.area">区域文字</span>
+        </div></div>
+      <div class="check" id="follow"><i class="on"></i><span data-i18n="follow">跟随原文字色</span></div>
+    </div>
+
+    <div class="row">
+      <button class="btn" id="btnPaste" data-i18n="btn.paste">粘贴图片</button>
+      <button class="btn" id="btnOpen" data-i18n="btn.open">打开图片…</button>
+      <button class="btn icon" id="btnReload" disabled title="刷新">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <polyline points="23 4 23 10 17 10"></polyline>
+          <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+        </svg>
+      </button>
+      <button class="btn" id="btnGrab"
+        title="截图前请把目标文档缩放到 100% —— 缩放不是 100% 时，按截图量出的字号和原文档对不上" data-i18n="btn.grab">框选截图</button>
+      <span style="width:6px"></span>
+      <button class="btn primary" id="btnRun"><span class="step">①</span><span data-i18n="btn.run">识别文字</span></button>
+      <button class="btn" id="btnCopy" disabled data-i18n="btn.copy">复制文本</button>
+      <button class="btn" id="btnS2T" disabled data-i18n="btn.s2t">简 ↔ 繁</button>
+      <button class="btn" id="btnClear" disabled data-i18n="btn.clear">清空</button>
+      <span style="width:6px"></span>
+      <button class="btn" id="btnWrite" disabled><span class="step">②</span><span data-i18n="btn.write">写入程序</span></button>
+    </div>
+  </div>
+
+  <div class="body">
+    <div class="pane left">
+      <div class="pane-head">
+        <span class="pane-title">Source</span>
+        <span class="tag" id="srcTag" data-i18n="tag.image">图像</span>
+        <span class="spacer"></span>
+        <button class="btn tiny" id="btnUndo" aria-label="undo">↶</button>
+        <button class="btn tiny" id="btnRedo" aria-label="redo">↷</button>
+        <span class="hint" id="srcHint" data-i18n="hint.local">只在本机处理</span>
+      </div>
+      <div class="preview empty" id="preview">
+        <div class="empty-hint" data-i18n="empty.image">粘贴、打开，或框选屏幕区域</div>
+      </div>
+    </div>
+
+    <div class="pane right">
+      <div class="pane-head">
+        <span class="pane-title">Result</span>
+        <span class="tag" id="resTag" data-i18n="tag.blank">空行 = 分段</span>
+        <span class="spacer"></span>
+        <span class="hint" data-i18n="hint.edit">可直接编辑</span>
+      </div>
+      <div class="result" id="result">
+        <div class="empty-hint">识别结果会出现在这里。清空后也可以自己输入，每段会成为目标程序里的一个文字图层。</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="bottom">
+    <div class="status">
+      <span class="dot" id="dot"></span><span id="connText" data-i18n="st.offline">未连接</span>
+      <span class="sep">|</span>
+      <span id="statusText" data-i18n="st.ready">就绪</span>
+      <span class="spacer"></span>
+      <span id="engineText" data-i18n="st.engine">RapidOCR · 本地推理</span>
+    </div>
+  </div>
+</div>
+
+
+<div class="mask" id="mask"></div>
+<div class="dialog" id="dialog">
+  <h3 data-i18n="set.title">设置</h3>
+  <div class="content">
+    <div class="line">
+      <label data-i18n="set.program">PhotoCraft 程序</label>
+      <div class="row2">
+        <input id="dirInput" readonly placeholder="尚未设置">
+        <button class="btn" id="btnPickDir" data-i18n="set.pick">选择 photocraft.exe…</button>
+      </div>
+    </div>
+    <div class="line">
+      <label data-i18n="set.port">控制端口</label>
+      <div class="row2"><input id="portInput" value="8125" style="max-width:120px"></div>
+    </div>
+    <div class="line">
+      <label data-i18n="set.script">启动脚本</label>
+      <div class="note tight" data-i18n="set.note">
+        PhotoCraft 必须通过此 BAT 脚本启动（携带控制端口），启动后即可在此直接写入。
+      </div>
+      <div class="row2">
+        <button class="btn" id="btnMakeBat"><span data-i18n="set.makebat">在程序目录生成 photocraft_OCR.bat</span></button>
+        <div class="check" id="batDesktop"><i class="on"></i><span data-i18n="set.desktop">创建桌面快捷方式</span></div>
+      </div>
+    </div>
+    <div class="line spaced">
+      <div class="row2">
+        <button class="btn" id="btnMakeOwn" data-i18n="set.own">创建桌面 ArtCraftOCR 快捷方式</button>
+      </div>
+    </div>
+    <div class="note" id="setStatus"></div>
+  </div>
+  <div class="footer">
+    <button class="btn" id="btnSetClose" data-i18n="btn.close">关闭</button>
+    <button class="btn primary" id="btnSetSave" data-i18n="btn.save">保存</button>
+  </div>
+</div>
+
+<div class="mask" id="aboutMask"></div>
+<div class="dialog about" id="aboutDialog">
+  <div class="about-body">
+    <img class="about-icon" src="mark.png" alt="ArtCraft OCR">
+    <div class="about-title">ArtCraft OCR</div>
+    <div class="about-sub">Local OCR Plugin</div>
+    <div class="about-ver"><span data-i18n="about.ver">Version</span> <span id="aboutVersion">1.0.0</span></div>
+    <p class="about-desc">
+      A local text recognition tool for ArtCraft.<br>
+      Recognize text from images and extract structured<br>text content for your creative workflow.
+    </p>
+    <div class="about-h" data-i18n="about.dev">DEVELOPED BY</div>
+    <div class="about-dev">Laplace2-ai</div>
+    <div class="about-note" data-i18n="about.note1">A project of Laplace2 Studio</div>
+    <div class="about-h" data-i18n="about.lic">LICENSE &amp; THIRD-PARTY NOTICES</div>
+    <div class="about-note" data-i18n="about.comp">Open Source Components &amp; Licenses</div>
+    <img class="about-logo" src="lp2.png" alt="Laplace2">
+    <div class="about-copy">© 2026 Laplace2-ai</div>
+    <div class="about-links">
+      <button class="btn" id="btnGithub">GitHub</button>
+      <button class="btn" id="btnLicense">License</button>
+      <button class="btn" id="btnNotices">Third-party Notices</button>
+    </div>
+  </div>
+  <div class="about-x" id="btnAboutClose">×</div>
+</div>
+
+<div class="toast" id="toast"></div>
+<div class="popover" id="popover"></div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const state = { lang: "ch", anchor: "原位置", font: "Microsoft YaHei", scale: 100,
+                size: 0, mode: "line", follow: true, target: "PhotoCraft" };
+let paragraphs = [];
+let lineItems = [];
+let imageReady = false;
+let canReload = false;
+let picking = false;
+
+/* 每段可单独选的字号与颜色。跟顶栏那两个下拉共用同一组数字，免得两处漂。 */
+const SWATCHES = [["#000000", "黑"], ["#ffffff", "白"], ["#b31244", "洋红"], ["#2e3192", "蓝"],
+                  ["#1a7f37", "绿"], ["#d97706", "橙"], "-", ["auto", "跟随原文"]];
+
+function toast(msg, bad) {
+  const el = $("toast");
+  el.textContent = msg;
+  el.className = "toast" + (bad ? " bad" : "");
+  el.style.display = "block";
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.style.display = "none", 3600);
+}
+const setStatus = (t) => { $("statusText").textContent = t; };
+function setConnected(ok, port) {
+  $("dot").className = "dot " + (ok ? "ok" : "");
+  $("connText").textContent = ok ? `${t("st.connected")} · 127.0.0.1:${port}` : t("st.offline");
+}
+
+/* ---------------- popover ---------------- */
+/* 任何未被捕获的错误都要看得见：一个点了没反应的按钮，用户无法判断是
+   功能没做还是坏了，而这正是之前「设置」什么也不弹的原因。 */
+window.addEventListener("error", (e) => toast(t("st.internal", {m: e.message}), true));
+window.addEventListener("unhandledrejection", (e) => {
+  const reason = e.reason;
+  toast(t("st.internal", {m: (reason && (reason.message || reason)) || "?"}), true);
+});
+
+const pop = $("popover");
+function closePop() { pop.style.display = "none"; }
+document.addEventListener("click", (e) => { if (!pop.contains(e.target)) closePop(); }, true);
+
+function openPopover(anchorEl, items, current, onPick) {
+  pop.innerHTML = "";
+  items.forEach((item) => {
+    if (item === "-") {
+      const sep = document.createElement("div");
+      sep.className = "sep";
+      pop.appendChild(sep);
+      return;
+    }
+    const value = Array.isArray(item) ? item[0] : item;
+    const label = Array.isArray(item) ? item[1] : item;
+    const row = document.createElement("div");
+    row.textContent = label;
+    if (value === current) row.className = "on";
+    row.onclick = () => { closePop(); onPick(value, label); };
+    pop.appendChild(row);
+  });
+  const r = anchorEl.getBoundingClientRect();
+  pop.style.display = "block";
+  pop.style.left = Math.min(r.left, window.innerWidth - pop.offsetWidth - 8) + "px";
+  // 靠近窗口底部时向上翻。之前一律向下展开，最后几段的字号/颜色菜单会有一半落在
+  // 视窗外面，点不到也看不见。
+  const height = pop.offsetHeight;
+  const below = r.bottom + 4;
+  const preferred = (below + height > window.innerHeight - 8)
+    ? Math.max(8, r.top - height - 4)
+    : below;
+  // 最后一段的菜单落点可能在可视区外（列表已经滚走），夹在视窗内比"按锚点算"
+  // 更可靠 —— 否则翻上去以后整块仍在窗口下方，等于没修。
+  pop.style.top = Math.min(Math.max(8, preferred),
+                           Math.max(8, window.innerHeight - height - 8)) + "px";
+}
+
+/* ---------------- menus ---------------- */
+/* 菜单双语。只翻菜单本身：面板里的字段名和按钮保持中文，等整页翻译那一版一起做。
+   英文界面里语种按「英文 / 中文简体 / 中文繁体」排，中文界面里反过来。 */
+const MENUS = {
+  zh: {
+    bar: { file: "文件", edit: "编辑", help: "帮助" },
+    file: [["open", "打开图片…"], ["paste", "粘贴图片"], ["grab", "框选截图"], "-",
+           ["export", "导出文字数据 JSON…"], ["import", "导入文字数据 JSON…"], "-",
+           ["lang", "界面语言"], "-",
+           ["settings", "设置…"], "-", ["quit", "退出"]],
+    edit: [["copy", "复制文本"], ["s2t", "简 → 繁"], ["t2s", "繁 → 简"], "-", ["clear", "清空"]],
+    help: [["about", "关于 ArtCraft OCR"], ["usage", "使用说明"]],
+    langOrder: [["zh", "中文（简体）"], ["en", "English"]],
+  },
+  en: {
+    bar: { file: "File", edit: "Edit", help: "Help" },
+    file: [["open", "Open Image…"], ["paste", "Paste Image"], ["grab", "Capture Region"], "-",
+           ["export", "Export Text Data (JSON)…"], ["import", "Import Text Data (JSON)…"], "-",
+           ["lang", "Language"], "-",
+           ["settings", "Settings…"], "-", ["quit", "Quit"]],
+    edit: [["copy", "Copy Text"], ["s2t", "Simplified → Traditional"],
+           ["t2s", "Traditional → Simplified"], "-", ["clear", "Clear"]],
+    help: [["about", "About ArtCraft OCR"], ["usage", "Usage"]],
+    langOrder: [["en", "English"], ["zh", "中文（简体）"]],
+  },
+};
+state.uiLang = "en";
+state.scDirection = "s2t";   // 首屏就是英文，等设置读回来再按用户选择覆盖
+
+/* 界面双语。中文是原文，英文是逐条对照的翻译；两边的键必须一一对应，
+   少一条就露出中文，所以 applyLang() 之后还有一条自检（见 check_ui.py）。 */
+const I18N = {
+  zh: {
+    "f.target": "目标", "f.lang": "语种", "f.font": "字体", "f.scale": "比例",
+    "f.anchor": "落点", "f.mode": "写入",
+    "mode.point": "点文字", "mode.area": "区域文字", "follow": "跟随原文字色",
+    "btn.paste": "粘贴图片", "btn.open": "打开图片…", "btn.reload": "刷新", "btn.grab": "框选截图",
+    "btn.run": "识别文字", "btn.copy": "复制文本", "btn.s2t": "简 ↔ 繁",
+    "btn.t2s": "繁 → 简", "btn.clear": "清空", "btn.write": "写入程序",
+    "btn.close": "关闭", "btn.save": "保存",
+    "tag.image": "图像", "tag.blank": "空行 = 分段", "hint.local": "只在本机处理",
+    "hint.edit": "可直接编辑", "empty.image": "粘贴、打开，或框选屏幕区域",
+    "st.offline": "未连接", "st.ready": "就绪", "st.engine": "RapidOCR · 本地推理",
+    "src.none": "未载入图片",
+    "set.title": "设置", "set.program": "PhotoCraft 程序",
+    "set.pick": "选择 photocraft.exe…", "set.port": "控制端口",
+    "set.script": "启动脚本",
+    "set.note": "PhotoCraft 必须通过此 BAT 脚本启动（携带控制端口），启动后即可在此直接写入。",
+    "set.makebat": "在程序目录生成 photocraft_OCR.bat",
+    "set.desktop": "创建桌面快捷方式",
+    "set.own": "创建桌面 ArtCraftOCR 快捷方式",
+    "about.ver": "版本", "about.dev": "开发者", "about.lic": "许可与第三方声明",
+    "about.comp": "开源组件与许可", "about.note1": "Laplace2 Studio 出品",
+    "lang.zh": "中文简体", "lang.cht": "中文繁体", "lang.en": "英文",
+    "st.connected": "已连接", "st.copied": "已复制", "st.rec": "识别中…",
+    "st.writing": "写入中…", "st.imgloaded": "图片已载入，点 ① 识别文字；在图上拖一个框可裁剪",
+    "st.exporting": "导出中…", "st.exportfail": "导出失败", "st.undone": "已撤销",
+    "st.redone": "已重做", "st.stale": "画面可能已变，建议重新识别",
+    "st.deleted": "已删除一段", "st.exportcancel": "已取消导出",
+    "st.cropped": "已截取选区，点 ① 识别文字", "st.cleared": "已清空，可以直接输入文字",
+    "st.drag": "拖动选择屏幕区域…", "st.recfail": "识别失败",
+    "st.writtenN": "已写入 {n} 段", "st.writtenPartial": "已写入 {n} 段，{f} 段失败",
+    "st.exportedN": "已导出 {p} 段 / {l} 行", "st.anchorSet": "落点：{v}",
+    "st.recdone": "识别完成：{p} 段 / {l} 行 · 用时 {s}s",
+    "st.converted": "转换完成，改动 {n} 个字",
+    "st.scNextT": "简 → 繁", "st.scNextS": "繁 → 简",
+    "st.translated": "已翻译 {n} 段", "st.scNext": "下次：{v}", "st.imported": "已导入 {n} 段文字",
+    "st.reloaded": "已从磁盘重新载入，请重新识别",
+    "menu.import": "导入文字数据 JSON…",
+    "st.colourSet": "第 {i} 段颜色：{v}", "st.colourAuto": "第 {i} 段颜色恢复为原文",
+    "st.cancelled": "已取消", "st.grabfail": "框选失败",
+    "st.modePoint": "写入方式：点文字", "st.modeArea": "写入方式：区域文字",
+    "st.usage": "①识别文字 → 改字 → ②写入程序", "st.needimage": "先放一张图片进来",
+    "st.internal": "内部错误：{m}", "st.writedone": "写入完成", "st.saved": "设置已保存",
+    "st.exportedTo": "已导出：{p}", "st.failedN": "{n} 段没写进去：{e}",
+    "st.dirremembered": "已记下目录：{p}，再点一次写入",
+    "st.running": "已检测到 photocraft.exe 在运行。", "st.notrunning": "当前没有检测到 photocraft.exe 在运行。",
+    "st.picked": "已选择，记得保存。", "st.savedok": "已保存。", "st.savefail": "保存失败",
+    "st.genfail": "生成失败", "st.created": "已创建：{p}",
+    "no.undoMsg": "没有可撤销的操作", "no.redoMsg": "没有可重做的操作", "no.content": "没有内容",
+    "st.undone2": "已撤销。", "st.redone2": "已重做。", "ph.body": "在这里输入文字，空行分段", "meta.lines": "行", "meta.manual": "手动",
+    "tag.blocks": "{n} 段", "st.generated": "已生成：{name}", "st.shortcutline": "桌面快捷方式：{name}", "set.failed": "创建失败",
+    "st.written": "已写入 {n} 段", "st.writefail": "写入失败",
+  },
+  en: {
+    "f.target": "Target", "f.lang": "Language", "f.font": "Font", "f.scale": "Scale",
+    "f.anchor": "Anchor", "f.mode": "Write as",
+    "mode.point": "Point text", "mode.area": "Area text", "follow": "Follow ink colour",
+    "btn.paste": "Paste Image", "btn.open": "Open Image…", "btn.reload": "Refresh", "btn.grab": "Capture Region",
+    "btn.run": "Recognise", "btn.copy": "Copy Text", "btn.s2t": "Simplified ↔ Traditional",
+    "btn.t2s": "Traditional → Simplified", "btn.clear": "Clear", "btn.write": "Write to App",
+    "btn.close": "Close", "btn.save": "Save",
+    "tag.image": "Image", "tag.blank": "Blank line = new block", "hint.local": "Local only",
+    "hint.edit": "Editable", "empty.image": "Paste, open, or capture a screen region",
+    "st.offline": "Not connected", "st.ready": "Ready", "st.engine": "RapidOCR · on this machine",
+    "src.none": "No image",
+    "set.title": "Settings", "set.program": "PhotoCraft program",
+    "set.pick": "Choose photocraft.exe…", "set.port": "Control port",
+    "set.script": "Launch script",
+    "set.note": "PhotoCraft must be started through this BAT script (it carries the control port); once it is running you can write straight from here.",
+    "set.makebat": "Create photocraft_OCR.bat in the program folder",
+    "set.desktop": "Create a desktop shortcut",
+    "set.own": "Create an ArtCraftOCR desktop shortcut",
+    "about.ver": "Version", "about.dev": "Developed by", "about.lic": "License & third-party notices",
+    "about.comp": "Open source components & licences", "about.note1": "A project of Laplace2 Studio",
+    "lang.zh": "Chinese (Simplified)", "lang.cht": "Chinese (Traditional)", "lang.en": "English",
+    "st.connected": "Connected", "st.copied": "Copied", "st.rec": "Recognising…",
+    "st.writing": "Writing…", "st.imgloaded": "Image loaded. Press ① Recognise; drag a box on the image to crop.",
+    "st.exporting": "Exporting…", "st.exportfail": "Export failed", "st.undone": "Undone",
+    "st.redone": "Redone", "st.stale": "The picture may have changed — recognise again",
+    "st.deleted": "Block deleted", "st.exportcancel": "Export cancelled",
+    "st.cropped": "Region captured. Press ① Recognise.", "st.cleared": "Cleared — type freely",
+    "st.drag": "Drag to select a screen region…", "st.recfail": "Recognition failed",
+    "st.writtenN": "Wrote {n} block(s)", "st.writtenPartial": "Wrote {n}, {f} failed",
+    "st.exportedN": "Exported {p} block(s) / {l} line(s)", "st.anchorSet": "Anchor: {v}",
+    "st.recdone": "Recognised {p} block(s) / {l} line(s) · {s}s",
+    "st.converted": "Converted: {n} character(s) changed",
+    "st.scNextT": "Simplified → Traditional", "st.scNextS": "Traditional → Simplified",
+    "st.translated": "Translated {n} block(s)", "st.scNext": "Next: {v}", "st.imported": "Imported text for {n} block(s)",
+    "st.reloaded": "Reloaded from disk — recognise again",
+    "menu.import": "Import Text Data (JSON)…",
+    "st.colourSet": "Block {i} colour: {v}", "st.colourAuto": "Block {i} colour back to the original",
+    "st.cancelled": "Cancelled", "st.grabfail": "Capture failed",
+    "st.modePoint": "Write as: point text", "st.modeArea": "Write as: area text",
+    "st.usage": "① Recognise → edit → ② Write", "st.needimage": "Load an image first",
+    "st.internal": "Internal error: {m}", "st.writedone": "Write complete", "st.saved": "Settings saved",
+    "st.exportedTo": "Exported: {p}", "st.failedN": "{n} block(s) did not land: {e}",
+    "st.dirremembered": "Folder recorded: {p} — press Write again",
+    "st.running": "photocraft.exe is running.", "st.notrunning": "photocraft.exe is not running.",
+    "st.picked": "Chosen — remember to save.", "st.savedok": "Saved.", "st.savefail": "Save failed",
+    "st.genfail": "Could not create it", "st.created": "Created: {p}",
+    "no.undoMsg": "Nothing to undo", "no.redoMsg": "Nothing to redo", "no.content": "Nothing there",
+    "st.undone2": "Undone.", "st.redone2": "Redone.", "ph.body": "Type here; a blank line starts a new block", "meta.lines": "line(s)", "meta.manual": "manual",
+    "tag.blocks": "{n} block(s)", "st.generated": "Created: {name}", "st.shortcutline": "Desktop shortcut: {name}", "set.failed": "Could not create it",
+    "st.written": "Wrote {n} block(s)", "st.writefail": "Write failed",
+  },
+};
+
+function t(key, vars) {
+  const table = I18N[state.uiLang] || I18N.zh;
+  let text = table[key];
+  if (text === undefined) text = I18N.zh[key];
+  if (text === undefined) return key;
+  if (vars) for (const k in vars) text = text.replace("{" + k + "}", vars[k]);
+  return text;
+}
+
+function applyLang() {
+  document.querySelectorAll("[data-i18n]").forEach((el) => {
+    el.textContent = t(el.dataset.i18n);
+  });
+  const set = (id, key) => { const el = $(id); if (el) el.textContent = t(key); };
+  // 图标按钮没有文字可换，标签只能走 tooltip
+  const reloadBtn = $("btnReload");
+  if (reloadBtn) reloadBtn.title = t("btn.reload");
+  const langNames = { ch: "lang.zh", cht: "lang.cht", en: "lang.en" };
+  set("lang", langNames[state.lang] || "lang.zh");
+  const anchorEl = $("anchor");
+  if (anchorEl) anchorEl.textContent = anchorLabel(state.anchor);
+  document.querySelectorAll(".body[data-i]").forEach((el) => { el.dataset.ph = t("ph.body"); });
+  document.documentElement.lang = state.uiLang === "en" ? "en" : "zh-CN";
+  renderMenus();
+}
+
+
+function menus() { return MENUS[state.uiLang]; }
+
+function renderMenus() {
+  const bar = menus().bar;
+  document.querySelectorAll("#menu span").forEach((el) => {
+    el.textContent = bar[el.dataset.menu];
+  });
+}
+
+$("menu").querySelectorAll("span").forEach((el) => {
+  el.onclick = (e) => {
+    e.stopPropagation();
+    openPopover(el, menus()[el.dataset.menu], null, runMenu);
+  };
+});
+
+function runMenu(action) {
+  const map = { open: "btnOpen", paste: "btnPaste", grab: "btnGrab", copy: "btnCopy",
+                s2t: "btnS2T", clear: "btnClear" };
+  if (map[action]) { $(map[action]).click(); return; }
+  if (action === "import") importTextData();
+  else if (action === "lang") openLanguageMenu();
+  else if (action === "settings") openSettings();
+  else if (action === "export") exportJson();
+  else if (action === "quit") window.pywebview.api.quit_app();
+  else if (action === "about") openAbout();
+  else if (action === "usage") toast(t("st.usage"));
+}
+
+
+async function exportJson() {
+  collectEdits();
+  if (!paragraphs.some(p => (p.text || "").trim())) {
+    toast(t("no.content"), true);
+    return;
+  }
+  setStatus(t("st.exporting"));
+  const res = await window.pywebview.api.export_json(paragraphs, { lang: state.lang });
+  if (!res || res.cancelled) { setStatus(t("st.exportcancel")); return; }
+  if (!res.ok) { setStatus(t("st.exportfail")); toast(res.error, true); return; }
+  setStatus(t("st.exportedN", {p: res.paragraphs, l: res.lines}));
+  toast(t("st.exportedTo", {p: res.path}));
+}
+
+function openLanguageMenu() {
+  const el = document.querySelector('[data-menu="file"]');
+  const items = menus().langOrder;
+  openPopover(el, items, state.uiLang, (value) => {
+    state.uiLang = value;
+    applyLang();
+    window.pywebview.api.save_settings({ ui_lang: value });
+    setStatus(value === "en" ? "Interface language: English" : "界面语言：中文");
+  });
+}
+
+async function openSettings() {
+  const cur = await window.pywebview.api.current_settings();
+  $("dirInput").value = (cur && (cur.host_exe || cur.host_dir)) || "";
+  $("portInput").value = (cur && cur.port) || 8125;
+  $("setStatus").textContent = cur && cur.busy
+    ? t("st.running") : t("st.notrunning");
+  $("mask").style.display = "block";
+  $("dialog").style.display = "block";
+}
+function closeSettings() {
+  $("mask").style.display = "none";
+  $("dialog").style.display = "none";
+}
+$("mask").onclick = closeSettings;
+$("btnSetClose").onclick = closeSettings;
+$("btnPickDir").onclick = async () => {
+  const res = await window.pywebview.api.pick_host();
+  if (res && res.ok) {
+    $("dirInput").value = res.exe || res.host_dir;
+    $("setStatus").textContent = t("st.picked");
+  }
+};
+$("btnSetSave").onclick = async () => {
+  const res = await window.pywebview.api.save_settings({
+    host_dir: $("dirInput").value, port: $("portInput").value,
+  });
+  $("setStatus").textContent = res.ok ? t("st.savedok") : (res.error || t("st.savefail"));
+  if (res.ok) toast(t("st.saved"));
+};
+$("btnMakeBat").onclick = async () => {
+  await $("btnSetSave").onclick();
+  const res = await window.pywebview.api.generate_launch_script(
+    $("batDesktop").querySelector("i").classList.contains("on"));
+  if (!res.ok) { $("setStatus").textContent = res.error || t("st.genfail"); return; }
+  const lines = [t("st.generated", { name: res.name || res.path })];
+  if (res.shortcut_name) lines.push(t("st.shortcutline", { name: res.shortcut_name }));
+  if (res.warning) lines.push(res.warning);
+  $("setStatus").textContent = lines.join("\n");
+};
+$("batDesktop").onclick = () => {
+  $("batDesktop").querySelector("i").classList.toggle("on");
+};
+$("btnMakeOwn").onclick = async () => {
+  const res = await window.pywebview.api.create_own_shortcut();
+  $("setStatus").textContent = res.ok
+    ? t("st.created", { p: res.name || res.path })
+    : (res.error || t("set.failed"));
+};
+
+/* ---------------- controls ---------------- */
+function bindSelect(id, items, key, format) {
+  const el = $(id);
+  el.onclick = (e) => {
+    e.stopPropagation();
+    // items 可以是函数：语言切换后同一次点击要拿到新语言的标签。
+    openPopover(el, typeof items === "function" ? items() : items, state[key], (value, label) => {
+      state[key] = value;
+      el.dataset.value = value;
+      el.textContent = format ? format(value, label) : label;
+      if (key === "anchor") setStatus(t("st.anchorSet", {v: label}));
+    });
+  };
+}
+/* 中文界面按简体、繁体、英文排；英文界面里母语排最后（见 MENUS 的 lang 顺序，
+   双语落地时按语言切换，不在这里分叉）。 */
+// 语种的标签也走字典：英文界面里不能还写着「中文简体 / 中文繁体 / 英文」。
+function langItems() {
+  return [["ch", t("lang.zh")], ["cht", t("lang.cht")], ["en", t("lang.en")]];
+}
+bindSelect("lang", langItems, "lang");
+const ANCHORS = ["原位置", "左上", "右上", "中心", "左下", "右下"];
+const ANCHOR_EN = { "原位置": "Original", "左上": "Top left", "右上": "Top right",
+                    "中心": "Centre", "左下": "Bottom left", "右下": "Bottom right" };
+function anchorLabel(v) { return state.uiLang === "en" ? (ANCHOR_EN[v] || v) : v; }
+function anchorItems() { return ANCHORS.map(v => [v, anchorLabel(v)]); }
+bindSelect("anchor", anchorItems, "anchor");
+bindSelect("font", ["Microsoft YaHei", "SimSun", "SimHei", "KaiTi", "FangSong", "Noto Sans SC"], "font");
+bindSelect("scale", [[100, "100%"], [80, "80%"], [120, "120%"], [150, "150%"]], "scale");
+// 只有 PhotoCraft 真有适配器。VectorCraft 曾经挂在这里，但 write() 从来不看这个值，
+// 选了它照样写进 PhotoCraft —— 那比没有选项更糟。做了再加回来。
+bindSelect("target", ["PhotoCraft"], "target");
+
+$("mode").querySelectorAll("span").forEach((el) => {
+  el.onclick = () => {
+    $("mode").querySelectorAll("span").forEach(s => s.classList.remove("on"));
+    el.classList.add("on");
+    state.mode = el.dataset.mode;
+    setStatus(state.mode === "line" ? t("st.modePoint") : t("st.modeArea"));
+  };
+});
+
+$("follow").onclick = () => {
+  state.follow = !state.follow;
+  $("follow").querySelector("i").classList.toggle("on", state.follow);
+};
+
+/* ---------------- paragraphs ---------------- */
+/* 空行 = 分段。提示语一直是这么写的，但其实是空白：在这个块里按两次回车只是多一个
+   换行，整块仍然作为**一个**图层写出去。用户手打两段，得到的是一个带空行的层。
+   这里把"空行"真的变成段落边界，并且只在真的拆开时才重渲染 —— 每敲一个字就重建
+   DOM 会把光标弄丢，那个体验比不能分段还糟。 */
+function splitBlankLines(index) {
+  const p = paragraphs[index];
+  if (!p) return false;
+  const parts = (p.text || "").split(/\n[ \t]*\n/);
+  if (parts.length < 2) return false;
+  const first = parts[0].replace(/[ \t]+$/, "");
+  const rest = parts.slice(1).map(t => t.replace(/^\n+/, ""));
+  const made = rest.map(t => ({ text: t, size: 0, box: null, colour: "", lines: 0 }));
+  paragraphs.splice(index, 1, Object.assign({}, p, { text: first }), ...made);
+  return true;
+}
+
+function placeCaret(el, at) {
+  const range = document.createRange();
+  const target = el.firstChild || el;
+  const limit = (el.textContent || "").length;
+  range.setStart(target, Math.min(at, limit));
+  range.collapse(true);
+  const sel = window.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(range);
+}
+
+function renderParagraphs() {
+  const box = $("result");
+  box.innerHTML = "";
+  // 没有识别结果时也要能直接键入。之前这里只有一句提示：提示读得懂，但打不了字，
+  // 用户第一次打开、不想识别只想手打，就卡在首屏（只有点过「清空」才有输入块）。
+  if (!paragraphs.length) {
+    paragraphs.push({ text: "", size: 0, box: null, colour: "", lines: 0 });
+  }
+  paragraphs.forEach((p, i) => {
+    // 手打的段落没有识别字号，默认 24；识别出来的保持原值，一个点都不改。
+    if (!p.size) p.size = 24;
+    if (p._size0 === undefined) p._size0 = p.size;
+    const row = document.createElement("div");
+    row.className = "para";
+    const colour = p.colour || "#000000";
+    row.innerHTML =
+      `<div class="body" contenteditable="true" data-i="${i}"></div>
+       <div class="meta">
+         <span class="swatch pick" data-i="${i}">
+           <i style="background:${colour}"></i>${p.custom_colour ? colour + " · 已改" : colour}</span>
+         <span class="sizefield">
+           <input class="num mini-num" data-i="${i}" type="number" min="6" max="200" step="1"
+             value="${Math.round(p.size || 24)}"><span class="unit">pt</span></span>
+         <span>${p.lines ? p.lines + " " + t("meta.lines") : t("meta.manual")}</span>
+         <span class="spacer"></span>
+         <span class="mini add" data-i="${i}">＋</span>
+         <span class="mini del" data-i="${i}">×</span>
+       </div>`;
+    const bodyEl = row.querySelector(".body");
+    bodyEl.dataset.ph = t("ph.body");
+    bodyEl.innerText = p.text || "";
+    row.querySelector(".body").addEventListener("input", () => {
+      collectEdits();
+      if (splitBlankLines(i)) {
+        renderParagraphs();
+        const next = document.querySelector(`.body[data-i="${i + 1}"]`);
+        if (next) { next.focus(); placeCaret(next, 0); }
+      }
+      refreshButtons();
+    });
+
+    // 每段能单独改颜色和字号。全局那两个框是"默认值"，用户在这一段上点过的值优先，
+    // 否则改一段就得改整张图。
+    row.querySelector(".swatch").onclick = (e) => {
+      e.stopPropagation();
+      openPopover(e.currentTarget, SWATCHES, p.colour || "#000000", (value) => {
+        p.colour = value === "auto" ? null : value;
+        p.custom_colour = value !== "auto";
+        renderParagraphs();
+        setStatus(p.custom_colour ? t("st.colourSet", {i: i + 1, v: value}) : t("st.colourAuto", {i: i + 1}));
+      });
+    };
+    // 字号直接改数字，没有预设值可选：预设的 10/12/…/120 跟识别出来的 13、15、16
+    // 对不上，选哪个都不是原文的大小。
+    const sizeField = row.querySelector(".mini-num");
+    const syncSize = () => {
+      const value = Math.min(200, Math.max(6, Math.round(Number(sizeField.value) || 24)));
+      sizeField.value = value;
+      p.size = value;
+      p.custom_size = value !== p._size0;
+      refreshButtons();
+    };
+    sizeField.addEventListener("change", syncSize);
+    sizeField.addEventListener("blur", syncSize);
+
+    /* 加一段 / 删一段。空行分段留着，但手打时每加一段都要敲两次回车、还得把光标
+       挪回去，这套用久了就是折磨；两个按钮是给"我就想加一段"的场合。 */
+    row.querySelector(".add").onclick = (e) => {
+      e.stopPropagation();
+      collectEdits();
+      paragraphs.splice(i + 1, 0, { text: "", size: 0, box: null, colour: "", lines: 0 });
+      renderParagraphs();
+      const next = document.querySelector(`.body[data-i="${i + 1}"]`);
+      if (next) { next.focus(); placeCaret(next, 0); }
+    };
+    row.querySelector(".del").onclick = (e) => {
+      e.stopPropagation();
+      collectEdits();
+      if (paragraphs.length <= 1) {
+        paragraphs = [{ text: "", size: 0, box: null, colour: "", lines: 0 }];
+      } else {
+        paragraphs.splice(i, 1);
+      }
+      renderParagraphs();
+      setStatus(t("st.deleted"));
+    };
+
+    box.appendChild(row);
+  });
+  $("resTag").textContent = paragraphs.some(p => (p.text || "").trim() || p.box)
+    ? t("tag.blocks", { n: paragraphs.length }) : t("tag.blank");
+  refreshButtons();
+}
+
+/* 粘贴只取纯文本。
+   直接放行会让浏览器把源格式一起带进来：从深色终端或代码块复制，结果区里就会出现
+   一块黑底；源里的 <div>/<p> 还会变成块级元素，把一行拆成两行 —— 看起来像「错行」，
+   实际是外面那层 HTML 带来的。 */
+function insertPlain(text) {
+  const sel = window.getSelection();
+  if (!sel || !sel.rangeCount) return false;
+  const range = sel.getRangeAt(0);
+  if (!range.commonAncestorContainer) return false;
+  range.deleteContents();
+  const node = document.createTextNode(String(text).replace(/\r\n?/g, "\n"));
+  range.insertNode(node);
+  range.setStartAfter(node);
+  range.collapse(true);
+  sel.removeAllRanges();
+  sel.addRange(range);
+  return true;
+}
+
+document.addEventListener("paste", (e) => {
+  const body = e.target && e.target.closest && e.target.closest(".body[data-i]");
+  if (!body) return;
+  e.preventDefault();
+  const data = e.clipboardData || window.clipboardData;
+  const text = data ? data.getData("text/plain") : "";
+  if (!insertPlain(text)) {
+    // 没有选区（焦点丢了）时退回到直接追加，总比什么也不发生强。
+    body.innerText = (body.innerText || "") + text;
+  }
+  collectEdits();
+  // 粘进来的原文里也常有空行，同样要拆段，否则"粘贴"和"手打"两种入口行为不一致。
+  const index = Number(body.dataset.i);
+  if (splitBlankLines(index)) {
+    renderParagraphs();
+    const next = document.querySelector(`.body[data-i="${index + 1}"]`);
+    if (next) { next.focus(); placeCaret(next, 0); }
+  }
+  refreshButtons();
+});
+
+function collectEdits() {
+  document.querySelectorAll(".body[data-i]").forEach((el) => {
+    const i = Number(el.dataset.i);
+    // innerText 保留用户敲的换行；textContent 会把它们吃掉
+    if (paragraphs[i]) paragraphs[i].text = el.innerText.replace(/\s+$/, "");
+  });
+}
+
+function refreshButtons() {
+  collectEdits();
+  const usable = paragraphs.some(p => (p.text || "").trim().length > 0);
+  ["btnCopy", "btnS2T", "btnWrite"].forEach(id => { $(id).disabled = !usable; });
+  const reload = $("btnReload");
+  if (reload) reload.disabled = !(imageReady && canReload);
+  // 清空是重置，不是对内容操作：它必须在没有内容时也能按，
+  // 否则用户第一次打开程序就没有办法直接手打文字。
+  $("btnClear").disabled = false;
+}
+
+/* ---------------- image ---------------- */
+function showImage(res) {
+  $("srcMeta").textContent = `${res.name} · ${res.width}×${res.height}`;
+  $("srcTag").textContent = res.name;
+  const box = $("preview");
+  box.className = "preview";
+  box.innerHTML = `<img id="img" src="${res.preview}"><div class="cropbox" id="cropbox"></div>`;
+  imageReady = true;
+  canReload = Boolean(res.reloadable);
+  refreshButtons();
+  attachCrop();
+  setStatus(t("st.imgloaded"));
+}
+
+async function loadImage(call) {
+  const res = await call();
+  if (!res || !res.ok) { if (res && res.error) toast(res.error, true); return; }
+  showImage(res);
+}
+
+$("btnReload").onclick = async () => {
+  const res = await window.pywebview.api.reload_image();
+  if (!res || !res.ok) { toast((res && res.error) || t("st.recfail"), true); return; }
+  showImage(res);
+  paragraphs = [{ text: "", size: 0, box: null, colour: "", lines: 0 }];
+  lineItems = [];
+  renderParagraphs();
+  setStatus(t("st.reloaded"));
+};
+
+$("btnOpen").onclick = () => loadImage(() => window.pywebview.api.open_image());
+$("btnPaste").onclick = () => loadImage(() => window.pywebview.api.paste_image());
+
+$("btnGrab").onclick = async () => {
+  setStatus(t("st.drag"));
+  const res = await window.pywebview.api.grab_region();
+  if (!res.ok) { setStatus(res.cancelled ? t("st.cancelled") : t("st.grabfail")); return; }
+  showImage(res);
+  setStatus(t("st.cropped"));
+};
+
+function attachCrop() {
+  const wrap = $("preview");
+  const img = $("img");
+  if (!img) return;
+  let start = null;
+  let box = $("cropbox");
+
+  wrap.onmousedown = (e) => {
+    if (e.target !== img) return;
+    picking = true;
+    wrap.classList.add("picking");
+    const r = wrap.getBoundingClientRect();
+    start = { x: e.clientX - r.left, y: e.clientY - r.top };
+    box.style.display = "block";
+    box.style.left = start.x + "px"; box.style.top = start.y + "px";
+    box.style.width = "0px"; box.style.height = "0px";
+  };
+  wrap.onmousemove = (e) => {
+    if (!picking) return;
+    const r = wrap.getBoundingClientRect();
+    const x = e.clientX - r.left, y = e.clientY - r.top;
+    box.style.left = Math.min(start.x, x) + "px";
+    box.style.top = Math.min(start.y, y) + "px";
+    box.style.width = Math.abs(x - start.x) + "px";
+    box.style.height = Math.abs(y - start.y) + "px";
+  };
+  wrap.onmouseup = async () => {
+    if (!picking) return;
+    picking = false;
+    wrap.classList.remove("picking");
+    const r = wrap.getBoundingClientRect();
+    const imgRect = img.getBoundingClientRect();
+    const bx = parseFloat(box.style.left), by = parseFloat(box.style.top);
+    const bw = parseFloat(box.style.width), bh = parseFloat(box.style.height);
+    box.style.display = "none";
+    if (bw < 8 || bh < 8) return;
+    const res = await window.pywebview.api.crop_to(
+      bx - (imgRect.left - r.left), by - (imgRect.top - r.top),
+      bw, bh, imgRect.width, imgRect.height);
+    if (res.ok) showImage(res); else toast(res.error, true);
+  };
+}
+
+/* ---------------- actions ---------------- */
+$("btnRun").onclick = async () => {
+  if (!imageReady) { toast(t("st.needimage"), true); return; }
+  setStatus(t("st.rec"));
+  $("btnRun").disabled = true;
+  const res = await window.pywebview.api.recognize(state.lang);
+  $("btnRun").disabled = false;
+  if (!res.ok) { setStatus(t("st.recfail")); toast(res.error, true); return; }
+  paragraphs = res.paragraphs;
+  lineItems = res.lineItems || [];
+  renderParagraphs();
+  setStatus(t("st.recdone", {p: paragraphs.length, l: res.lines, s: res.seconds}));
+};
+
+$("btnCopy").onclick = () => {
+  collectEdits();
+  const text = paragraphs.map(p => p.text).join("\n\n");
+  navigator.clipboard.writeText(text).then(() => toast(t("st.copied")));
+};
+
+async function importTextData() {
+  const res = await window.pywebview.api.import_textdata();
+  if (!res || !res.ok) {
+    if (!(res && res.cancelled)) toast((res && res.error) || t("st.translatefail"), true);
+    return;
+  }
+  const incoming = res.texts || [];
+  collectEdits();
+  let applied = 0;
+  incoming.forEach((text, i) => {
+    if (paragraphs[i]) { paragraphs[i].text = text; applied += 1; }
+  });
+  renderParagraphs();
+  setStatus(t("st.imported", { n: applied }));
+}
+
+async function convert(dir) {
+  collectEdits();
+  let changed = 0;
+  for (const p of paragraphs) {
+    const res = await window.pywebview.api.convert(p.text, dir);
+    if (res.ok) { p.text = res.text; changed += res.changed; }
+  }
+  renderParagraphs();
+  setStatus(t("st.converted", { n: changed }));
+}
+
+/* 简繁合并成一个循环键：按一次 简→繁，再按 繁→简。原来的两个按钮并排，
+   用户每次都要先看清哪个方向，反而慢。 */
+$("btnS2T").onclick = () => {
+  state.scDirection = state.scDirection === "s2t" ? "t2s" : "s2t";
+  setStatus(state.scDirection === "s2t" ? t("st.scNextT") : t("st.scNextS"));
+  convert(state.scDirection === "s2t" ? "s2t" : "t2s");
+};
+
+async function importTextData() {
+  const res = await window.pywebview.api.import_textdata();
+  if (!res || !res.ok) {
+    if (!(res && res.cancelled)) toast((res && res.error) || t("st.translatefail"), true);
+    return;
+  }
+  const incoming = res.texts || [];
+  collectEdits();
+  let applied = 0;
+  incoming.forEach((text, i) => {
+    if (paragraphs[i]) { paragraphs[i].text = text; applied += 1; }
+  });
+  renderParagraphs();
+  setStatus(t("st.imported", { n: applied }));
+}
+
+async function convert(dir) {
+  collectEdits();
+  let changed = 0;
+  for (const p of paragraphs) {
+    const res = await window.pywebview.api.convert(p.text, dir);
+    if (res.ok) { p.text = res.text; changed += res.changed; }
+  }
+  renderParagraphs();
+  setStatus(t("st.converted", { n: changed }));
+}
+
+/* 简繁合并成一个循环键：按一次 简→繁，再按 繁→简。原来的两个按钮并排，
+   用户每次都要先看清哪个方向，反而慢。 */
+$("btnS2T").onclick = () => {
+  state.scDirection = state.scDirection === "s2t" ? "t2s" : "s2t";
+  setStatus(state.scDirection === "s2t" ? t("st.scNextT") : t("st.scNextS"));
+  convert(state.scDirection === "s2t" ? "s2t" : "t2s");
+};
+
+$("btnClear").onclick = async () => {
+  await window.pywebview.api.clear();
+  paragraphs = [{ text: "", size: 24, box: null, colour: "#000000", lines: 0 }];
+  // 不清这里，清空后点写入仍会拿上一次识别的行去写 —— 用户看到的是"清了还在"。
+  lineItems = [];
+  renderParagraphs();
+  imageReady = false;
+  canReload = false;
+  refreshButtons();
+  const box = $("preview");
+  box.className = "preview empty";
+  box.innerHTML = '<div class="empty-hint" data-i18n="empty.image">粘贴、打开，或框选屏幕区域</div>';
+  $("srcMeta").textContent = t("src.none");
+  $("srcTag").textContent = t("tag.image");
+  setStatus(t("st.cleared"));
+  const first = document.querySelector(".body[data-i='0']");
+  if (first) first.focus();
+};
+
+// 首屏就要有一个可编辑块：只放静态提示的话，用户不点「清空」就一个字也打不进去。
+renderParagraphs();
+refreshButtons();   // 让「清空」在首屏就可用：没有内容时也要能进入手动输入
+// 语言存在设置里，重启后仍是上次选的那一个。
+// pywebview 的 api 不是立刻就有：直接读会抛 "Cannot read properties of undefined"，
+// 那条错误会变成启动时的一个红 toast。等它出现，最多 5 秒，等不到就按中文显示。
+function whenApi(callback, tries) {
+  const api = window.pywebview && window.pywebview.api;
+  if (api) { callback(api); return; }
+  if ((tries || 0) >= 50) { applyLang(); return; }
+  setTimeout(() => whenApi(callback, (tries || 0) + 1), 100);
+}
+applyLang();   // 先按默认（英文）渲染，设置读回来再覆盖，避免首屏闪一下中文
+whenApi((api) => {
+  api.current_settings().then((cur) => {
+    if (cur && cur.ui_lang) { state.uiLang = cur.ui_lang; }
+    applyLang();
+  }).catch(() => applyLang());
+});
+
+$("btnWrite").onclick = async () => {
+  collectEdits();
+  const usable = paragraphs.filter(p => (p.text || "").trim());
+  if (!usable.length) { toast(t("no.content"), true); return; }
+  setStatus(t("st.writing"));
+  $("btnWrite").disabled = true;
+  // 点文字 = 一行一个图层；区域文字 = 一段一个框。两种语义不能混。
+  // 送出去的永远是**编辑后**的段落，逐行拆开由后端按识别时的行几何去做 ——
+  // 以前点文字模式直接把识别时的 lineItems 送出去，用户在面板里改的字根本没进去。
+  collectEdits();
+  const res = await window.pywebview.api.write(usable, {
+    anchor: state.anchor, lang: state.lang, font: state.font,
+    scale: state.scale, follow_colour: state.follow, target: state.target,
+    mode: state.mode,
+  });
+  $("btnWrite").disabled = false;
+  if (!res.ok) {
+    setStatus(t("st.writefail"));
+    toast(res.error, true);
+    if ((res.error || "").includes("目标程序目录")) {
+      const picked = await window.pywebview.api.pick_host();
+      if (picked.ok) toast(t("st.dirremembered", {p: picked.host_dir}));
+    }
+    return;
+  }
+  setConnected(true, res.port || "");
+  if (res.note) toast(res.note);
+  if (res.group) $("srcMeta").textContent = $("srcMeta").textContent + "  " + res.group;
+  if (res.failed && res.failed.length) {
+    setStatus(t("st.writtenPartial", {n: res.written, f: res.failed.length}));
+    toast(t("st.failedN", {n: res.failed.length, e: res.failed[0].error}), true);
+  } else {
+    setStatus(t("st.writtenN", {n: res.written}));
+    toast(t("st.writedone"));
+  }
+};
+</script>
+</body>
+</html>

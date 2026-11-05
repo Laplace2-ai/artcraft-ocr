@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>01 · 主界面</title>
+<link rel="stylesheet" href="ui.css">
+<style>
+  body { display: grid; place-items: start; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="titlebar">
+    <div class="brand">
+      <div class="mark"></div>
+      <div class="brand-name">ART<em>CRAFT</em> OCR</div>
+    </div>
+    <div class="menu"><span>文件</span><span>编辑</span><span>帮助</span></div>
+    <div class="spacer"></div>
+    <div class="src-meta">未载入图片</div>
+  </div>
+
+  <div class="topcontrols">
+    <div class="row">
+      <div class="field"><span class="label">目标</span><div class="select">PhotoCraft</div></div>
+      <div class="field"><span class="label">语种</span><div class="select">繁体</div></div>
+      <div class="field"><span class="label">字体</span><div class="select" style="min-width:150px">Noto Sans SC</div></div>
+      <div class="field"><span class="label">比例</span><div class="num">100%</div></div>
+      <div class="field"><span class="label">落点</span><div class="select" style="min-width:96px">原位置</div></div>
+      <div class="field"><span class="label">写入</span>
+        <div class="seg"><span class="on">点文字</span><span>段落文字</span></div>
+      </div>
+      <div class="check"><i class="on"></i>跟随原文字色</div>
+    </div>
+
+    <div class="row">
+      <button class="btn">粘贴图片</button>
+      <button class="btn">打开图片…</button>
+      <button class="btn">框选截图</button>
+      <span style="width:6px"></span>
+      <button class="btn primary" disabled><span class="step">①</span>识别文字</button>
+      <button class="btn" disabled>复制文本</button>
+      <button class="btn" disabled>简 → 繁</button>
+      <button class="btn" disabled>繁 → 简</button>
+      <span style="width:6px"></span>
+      <button class="btn" disabled><span class="step">②</span>写入程序</button>
+    </div>
+  </div>
+
+  <div class="body">
+    <div class="pane left">
+      <div class="pane-head">
+        <span class="pane-title">Source</span>
+        <span class="tag">图像</span>
+        <span class="spacer"></span>
+        <span class="hint">粘贴 / 打开 / 框选</span>
+      </div>
+      <div class="canvas">
+        <div class="empty">
+          <div class="glyph">[ ▤ ]</div>
+          <div class="lead">把图片放到这里</div>
+          <div class="sub">支持粘贴剪贴板、打开文件、框选屏幕区域<br>图片只在本机处理，不上传</div>
+          <div class="keys"><kbd>Ctrl</kbd><kbd>V</kbd><kbd>Ctrl</kbd><kbd>O</kbd><kbd>Ctrl</kbd><kbd>⇧</kbd><kbd>S</kbd></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="pane right">
+      <div class="pane-head">
+        <span class="pane-title">Result</span>
+        <span class="tag">空行 = 分段</span>
+        <span class="spacer"></span>
+        <span class="hint">可直接编辑</span>
+      </div>
+      <div class="result">
+        <div class="block dim">
+          <p>识别结果会出现在这里。每一段会成为 PhotoCraft 里的一个文字图层，同一次识别的所有图层会装进一个编号组。</p>
+          <div class="meta"><span>等待识别</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="bottom">
+<div class="status">
+      <span class="dot"></span><span>未连接</span>
+      <span class="sep">|</span>
+      <span>就绪，等待图片</span>
+      <span class="spacer"></span>
+      <span>RapidOCR · 本地推理</span>
+      <span class="sep">|</span>
+      <button class="btn ghost" style="padding:2px 8px">刷新连接</button>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

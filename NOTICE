@@ -1,0 +1,30 @@
+ARTCRAFT_OCR
+Copyright © 2026 Laplace2-ai
+
+This product is licensed under the Apache License, Version 2.0. The full text is in LICENSE.
+
+The Apache-2.0 license above covers this project's own source code. It grants no rights to
+the third-party software, model weights, conversion tables or fonts that a build of this
+product redistributes. Each of those keeps its own license, and each one is listed, with its
+source and the clause relied on, in DOCS/LICENSES.md.
+
+Components that ship their own notice or third-party-license files ship them verbatim in
+THIRD-PARTY/ next to the binary. Nothing is summarised, reordered or reworded there, and none
+of those files is reproduced in this NOTICE, so that the two cannot drift apart.
+
+"ArtCraft", "PhotoCraft", "FilmCraft" and "VectorCraft" are trademarks of their respective
+owners. This project is an independent tool: it is not affiliated with, endorsed by, or sponsored
+by the ArtCraft project.
+
+The ARTCRAFT_OCR name, the Lp2 mark and the visual identity assets are trademarks of Laplace2-ai.
+They are not licensed under Apache-2.0 and are not granted for reuse in other products; they are
+distributed only as part of this application.
+
+No third-party attribution notice is reproduced here, because no redistributed component
+carries a NOTICE file of its own to propagate under Apache-2.0 section 4(d).
+
+This product also contains code derived from the copyright holder's own internal OCR tool,
+adapted for this release — `CORE/textdata.py` began as that tool's JSON writer. It is the
+same rights holder's work, so it is covered by the same Apache-2.0 grant as the rest of this
+repository and is not third-party material. The adaptation is recorded in `DOCS/LICENSES.md`
+§1.1, where the file's origin and what changed are both written down.

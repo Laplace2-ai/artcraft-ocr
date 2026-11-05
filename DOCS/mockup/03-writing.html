@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>03 · 写入中</title>
+<link rel="stylesheet" href="ui.css">
+<style>
+  body { display: grid; place-items: start; }
+
+  .page {
+    align-self: center; justify-self: center;
+    width: 74%; aspect-ratio: 4 / 3;
+    background: #efe7dc; border-radius: 3px;
+    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.55);
+    padding: 7% 8%; display: flex; flex-direction: column; gap: 3.2%;
+  }
+  .line { height: 7px; border-radius: 2px; background: #2c2620; opacity: 0.82; }
+  .line.t { height: 13px; width: 62%; opacity: 0.95; margin-bottom: 1%; }
+  .line.s { width: 78%; } .line.m { width: 92%; } .line.f { width: 46%; }
+
+  /* per-block write state */
+  .block .st {
+    font-family: var(--font-mono); font-size: 10px;
+    letter-spacing: 0.06em;
+    margin-left: auto;
+  }
+  .block.done .st { color: var(--ok); }
+  .block.writing { border-left-color: var(--accent); background: rgba(214, 0, 100, 0.07); }
+  .block.writing .st { color: var(--accent-hover); }
+  .block.failed { border-left-color: var(--danger); background: rgba(255, 90, 90, 0.06); }
+  .block.failed .st { color: var(--danger); }
+  .block.failed p { color: var(--fg); }
+
+  .why {
+    margin-top: 5px; font-size: var(--fs-sm); color: var(--danger);
+    display: flex; align-items: center; gap: 6px;
+  }
+  .why b { font-weight: 400; color: var(--fg-faint); font-family: var(--font-mono); font-size: var(--fs-xs); }
+
+  .banner {
+    display: flex; align-items: center; gap: 10px;
+    margin: 0 16px 12px; padding: 9px 12px;
+    border: var(--bw) solid rgba(255, 90, 90, 0.5);
+    border-left-width: 3px;
+    border-radius: 0 var(--r-m) var(--r-m) 0;
+    background: rgba(255, 90, 90, 0.07);
+    font-size: var(--fs-md);
+  }
+  .banner .t { color: var(--fg); }
+  .banner .spacer { flex: 1; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="titlebar">
+    <div class="brand">
+      <div class="mark"></div>
+      <div class="brand-name">ART<em>CRAFT</em> OCR</div>
+    </div>
+    <div class="menu"><span>文件</span><span>编辑</span><span>帮助</span></div>
+    <div class="spacer"></div>
+    <div class="src-meta"><b>clipboard.png</b><span>2386 × 1491</span><span>写组 <b>OCRtext07</b></span></div>
+  </div>
+
+  <div class="topcontrols">
+    <div class="progress"><i></i></div>
+    <div class="row">
+      <div class="field"><span class="label">目标</span><div class="select">PhotoCraft</div></div>
+      <div class="field"><span class="label">语种</span><div class="select">繁体</div></div>
+      <div class="field"><span class="label">字体</span><div class="select" style="min-width:150px">Noto Sans SC</div></div>
+      <div class="field"><span class="label">比例</span><div class="num">100%</div></div>
+      <div class="field"><span class="label">落点</span><div class="select" style="min-width:96px">原位置</div></div>
+      <div class="field"><span class="label">写入</span>
+        <div class="seg"><span class="on">点文字</span><span>段落文字</span></div>
+      </div>
+      <div class="check"><i class="on"></i>跟随原文字色</div>
+    </div>
+
+    <div class="row">
+      <button class="btn" disabled>粘贴图片</button>
+      <button class="btn" disabled>打开图片…</button>
+      <button class="btn" disabled>框选截图</button>
+      <span style="width:6px"></span>
+      <button class="btn" disabled><span class="step">①</span>识别文字</button>
+      <button class="btn" disabled>复制文本</button>
+      <span style="width:6px"></span>
+      <button class="btn"><span class="step">②</span>取消写入</button>
+    </div>
+  </div>
+
+  <div class="body">
+    <div class="pane left">
+      <div class="pane-head">
+        <span class="pane-title">Source</span>
+        <span class="tag">clipboard.png</span>
+        <span class="spacer"></span>
+        <span class="hint">写入中，图层逐个建立</span>
+      </div>
+      <div class="canvas filled">
+        <div class="page">
+          <div class="line t"></div>
+          <div class="line m"></div><div class="line s"></div>
+          <div class="line m"></div><div class="line f"></div>
+          <div class="line" style="height:9px;margin-top:4%"></div>
+          <div class="line m"></div><div class="line s"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="pane right">
+      <div class="pane-head">
+        <span class="pane-title">Result</span>
+        <span class="tag">3 段 · 12 行</span>
+        <span class="spacer"></span>
+        <span class="hint">写组 OCRtext07</span>
+      </div>
+
+      <div class="result">
+        <div class="block done">
+          <p>第一章　潮汐与月亮</p>
+          <div class="meta"><span class="swatch"><i style="background:#1b1a18"></i>#1b1a18</span><span>字号 18pt</span><span>2 行</span><span class="st">已写入</span></div>
+        </div>
+
+        <div class="block writing">
+          <p>潮汐是月亮写在海面上的字。它每隔十二小时重复一次，却从不完全一样，就像同一句话被不同的人说出来</p>
+          <div class="meta"><span class="swatch"><i style="background:#241f1c"></i>#241f1c</span><span>字号 12pt</span><span>3 行</span><span class="st">写入中…</span></div>
+        </div>
+
+        <div class="block failed">
+          <p>我们记录它的节奏，是为了在混乱里找到可以依赖的那一小段规律；而规律本身，往往比潮水更容易退去。</p>
+          <div class="meta"><span class="swatch"><i style="background:#3a1f24"></i>#3a1f24</span><span>字号 12pt</span><span>3 行</span><span class="st">失败</span></div>
+          <div class="why">段宽超出画布，已跳过 <b>·</b> <span style="color:var(--fg-faint)">可改比例后重试这一段</span></div>
+        </div>
+      </div>
+
+      <div class="banner">
+        <span class="t">1 段没写进去，其余已完成</span>
+        <span style="font-size:12px;color:var(--fg-faint);margin-left:10px">重写整篇会产生重复图层</span>
+        <span class="spacer"></span>
+        <button class="btn" style="border-color:rgba(255,90,90,.55);color:#ffd0d0">只重试失败段</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="bottom">
+<div class="status">
+      <span class="dot ok"></span><span>已连接 · 127.0.0.1:49733</span>
+      <span class="sep">|</span>
+      <span>正在写入 <b>2 / 3</b> 段 · 预计 <b>4s</b></span>
+      <span class="spacer"></span>
+      <span>写入方式：点文字 · 跟随原文字色</span>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

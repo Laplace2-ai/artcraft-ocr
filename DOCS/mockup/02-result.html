@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>02 · 识别结果</title>
+<link rel="stylesheet" href="ui.css">
+<style>
+  body { display: grid; place-items: start; }
+
+  .page {
+    align-self: center;
+    justify-self: center;
+    width: 74%;
+    aspect-ratio: 4 / 3;
+    background: #efe7dc;
+    border-radius: 3px;
+    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.55);
+    padding: 7% 8%;
+    display: flex;
+    flex-direction: column;
+    gap: 3.2%;
+  }
+  .line { height: 7px; border-radius: 2px; background: #2c2620; opacity: 0.82; }
+  .line.t { height: 13px; width: 62%; opacity: 0.95; margin-bottom: 1%; }
+  .line.s { width: 78%; }
+  .line.m { width: 92%; }
+  .line.f { width: 46%; }
+
+  .marquee {
+    position: absolute;
+    inset: 14% 10%;
+    border: 2px dashed rgba(0, 247, 255, 0.85);
+    border-radius: 2px;
+    pointer-events: none;
+  }
+  .marquee:before {
+    content: "识别区域";
+    position: absolute;
+    top: -9px; left: -2px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: #06121a;
+    background: rgba(0, 247, 255, 0.85);
+    padding: 0 5px;
+    border-radius: 2px;
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="titlebar">
+    <div class="brand">
+      <div class="mark"></div>
+      <div class="brand-name">ART<em>CRAFT</em> OCR</div>
+    </div>
+    <div class="menu"><span>文件</span><span>编辑</span><span>帮助</span></div>
+    <div class="spacer"></div>
+    <div class="src-meta"><b>clipboard.png</b><span>2386 × 1491</span><span>1043 dpi</span></div>
+  </div>
+
+  <div class="topcontrols">
+    <div class="row">
+      <div class="field"><span class="label">目标</span><div class="select">PhotoCraft</div></div>
+      <div class="field"><span class="label">语种</span><div class="select">繁体</div></div>
+      <div class="field"><span class="label">字体</span><div class="select" style="min-width:150px">Noto Sans SC</div></div>
+      <div class="field"><span class="label">比例</span><div class="num">100%</div></div>
+      <div class="field"><span class="label">落点</span><div class="select" style="min-width:96px">原位置</div></div>
+      <div class="field"><span class="label">写入</span>
+        <div class="seg"><span class="on">点文字</span><span>段落文字</span></div>
+      </div>
+      <div class="check"><i class="on"></i>跟随原文字色</div>
+    </div>
+
+    <div class="row">
+      <button class="btn">粘贴图片</button>
+      <button class="btn">打开图片…</button>
+      <button class="btn">框选截图</button>
+      <span style="width:6px"></span>
+      <button class="btn"><span class="step">①</span>重新识别</button>
+      <button class="btn">复制文本</button>
+      <button class="btn">简 → 繁</button>
+      <button class="btn">繁 → 简</button>
+      <button class="btn">清空</button>
+      <span style="width:6px"></span>
+      <button class="btn primary"><span class="step">②</span>写入程序</button>
+    </div>
+  </div>
+
+  <div class="body">
+    <div class="pane left">
+      <div class="pane-head">
+        <span class="pane-title">Source</span>
+        <span class="tag">clipboard.png</span>
+        <span class="spacer"></span>
+        <span class="hint">滚轮缩放 · 拖拽平移</span>
+      </div>
+      <div class="canvas filled">
+        <div class="page">
+          <div class="line t"></div>
+          <div class="line m"></div>
+          <div class="line s"></div>
+          <div class="line m"></div>
+          <div class="line f"></div>
+          <div class="line" style="height:9px;margin-top:4%"></div>
+          <div class="line m"></div>
+          <div class="line s"></div>
+        </div>
+        <div class="marquee"></div>
+      </div>
+    </div>
+
+    <div class="pane right">
+      <div class="pane-head">
+        <span class="pane-title">Result</span>
+        <span class="tag">3 段 · 12 行</span>
+        <span class="spacer"></span>
+        <span class="hint">空行 = 分段</span>
+      </div>
+
+      <div class="result">
+        <div class="block active">
+          <p>第一章　潮汐与月亮</p>
+          <div class="meta">
+            <span class="swatch"><i style="background:#1b1a18"></i>#1b1a18</span>
+            <span>字号 18pt</span>
+            <span>2 行</span>
+          </div>
+        </div>
+
+        <div class="block">
+          <p>潮汐是月亮写在海面上的字。它每隔十二小时重复一次，却从不完全一样，就像同一句话被不同的人说出来</p>
+          <div class="meta">
+            <span class="swatch"><i style="background:#241f1c"></i>#241f1c</span>
+            <span>字号 12pt</span>
+            <span>3 行</span>
+          </div>
+        </div>
+
+        <div class="block">
+          <p>我们记录它的节奏，是为了在混乱里找到可以依赖的那一小段规律；而规律本身，往往比潮水更容易退去。</p>
+          <div class="meta">
+            <span class="swatch"><i style="background:#3a1f24"></i>#3a1f24</span>
+            <span>字号 12pt</span>
+            <span>3 行</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="bottom">
+<div class="status">
+      <span class="dot ok"></span><span>已连接 · 127.0.0.1:49733</span>
+      <span class="sep">|</span>
+      <span>识别完成：3 段 / 12 行 · 用时 <b>1.9s</b></span>
+      <span class="spacer"></span>
+      <span>繁体 · chinese_cht</span>
+      <span class="sep">|</span>
+      <button class="btn ghost" style="padding:2px 8px">刷新连接</button>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,52 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Build output
+build/
+dist/
+*.egg-info/
+
+# Model weights are never committed. MODELS/ carries download sources and checksums only —
+# see DOCS/LICENSES.md §5.
+MODELS/**/*.onnx
+MODELS/**/*.bin
+MODELS/**/*.pth
+
+# Runtime state: tokens, settings, logs
+state/
+*.token
+*.log
+
+# Font binaries are vendored per release, not committed (DOCS/LICENSES.md §6)
+FONTS/**/*.ttf
+FONTS/**/*.otf
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Build output from PACKAGING/
+PACKAGING/dist/
+PACKAGING/build/
+PACKAGING/out/
+PACKAGING/build2/
+
+# Runtime state written next to the executable; a source run puts it at the root
+settings.json
+PACKAGING/out*/
+
+# Release archives are uploaded as release assets, never committed
+RELEASES/**/*.zip
+
+# Translation model weights (large, shipped per release, not committed)
+MODELS/**/*.data
+MODELS/**/tokenizer.json
+
+# Staging folders from packaging (never committed)
+PACKAGING/.stage/
+PACKAGING/_stage/
+PACKAGING/out*/
+PACKAGING/*.previous/
