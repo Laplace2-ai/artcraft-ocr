@@ -21,7 +21,7 @@ cloud upload, no internet connection required.
 
 - **Recognise** Simplified Chinese, Traditional Chinese and English, locally (RapidOCR on
   onnxruntime).
-- **Keep the layout data**: a box, a size implied by the type, and the text colour of every line.
+- **Keep the layout data**: a box, a size implied by the type, and the ink colour of every line.
 - **Edit before writing**: type in the blocks, split with a blank line, `+` / `×` per block,
   colour and size per block, undo and redo with up to ten history steps.
 - **Two ways to write**: *point text* — one layer per line, on the original position and size;

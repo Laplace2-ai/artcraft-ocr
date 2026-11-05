@@ -32,7 +32,7 @@ ArtCraft OCR on the right.
 
 | | |
 |---|---|
-| ![Step 1](DOCS/images/demo/step-1.png) | **1 · Recognise.** Ten placeholders become ten blocks — each with the position it occupied, the size its type implies, its text colour, and a paragraph of its own. Nothing is guessed from "what the text says". |
+| ![Step 1](DOCS/images/demo/step-1.png) | **1 · Recognise.** Ten placeholders become ten blocks — each with the position it occupied, the size its type implies, its ink colour, and a paragraph of its own. Nothing is guessed from "what the text says". |
 | ![Step 2](DOCS/images/demo/step-2.png) | **2 · Replace the text.** Type in the blocks, or export the JSON, translate or rewrite it anywhere, and import it back. Area text goes in as one frame per block. |
 | ![Step 3](DOCS/images/demo/step-3.png) | **3 · Written to PhotoCraft.** Each block lands as real text in a group (`OCRtext01`), on the position and at the size the original had. From there it is an ordinary document — spacing, weights and typography are yours to finish. |
 | ![Step 4](DOCS/images/demo/step-4.png) | **4 · The same loop in Chinese.** Placeholders recognised, replaced with Chinese, written back and finished by hand. |

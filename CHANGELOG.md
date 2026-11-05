@@ -11,7 +11,7 @@ First release.
 
 - Local recognition with RapidOCR; no network at runtime, no image leaves the machine.
 - Simplified, Traditional and English. The traditional model ships as a separate weight.
-- Paragraph grouping, per-line text colour, and a size estimate taken from each line's box
+- Paragraph grouping, per-line ink colour, and a size estimate taken from each line's box
   height (1.18 × for CJK, 0.93 × for all-caps Latin, both measured against the recogniser).
 
 **Writing into PhotoCraft**
