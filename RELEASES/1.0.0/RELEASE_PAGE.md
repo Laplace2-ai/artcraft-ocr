@@ -14,7 +14,7 @@ cloud upload, no internet connection required.
 
 ![Recognise](https://raw.githubusercontent.com/Laplace2-ai/artcraft-ocr/main/DOCS/images/demo/step-1.png)
 
-**Download:** `ArtCraftOCR-1.0.0-win64.zip` (101.8 MB) · Windows 10/11, 64-bit · SHA-256 in
+**Download:** `ArtCraftOCR-1.0.0-win64.zip` (103.1 MB) · Windows 10/11, 64-bit · SHA-256 in
 `SHA256SUMS.txt`
 
 ### What it does
@@ -88,7 +88,7 @@ project; the Lp2 mark belongs to Laplace2-ai.
 
 ![识别](https://raw.githubusercontent.com/Laplace2-ai/artcraft-ocr/main/DOCS/images/demo/step-1.png)
 
-**下载**：`ArtCraftOCR-1.0.0-win64.zip`（101.8 MB）· Windows 10/11 64 位 · SHA-256 见
+**下载**：`ArtCraftOCR-1.0.0-win64.zip`（103.1 MB）· Windows 10/11 64 位 · SHA-256 见
 `SHA256SUMS.txt`
 
 ### 它做什么
