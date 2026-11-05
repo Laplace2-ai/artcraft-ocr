@@ -38,7 +38,7 @@ from CORE.metrics import estimate_size  # noqa: E402
 from CORE.model import Box, Line  # noqa: E402
 from CORE.segment import group_paragraphs, paragraphs_to_text  # noqa: E402
 
-VERSION = "1.0.0"
+VERSION = "1.0.1"
 
 
 APP_DIR = ROOT / "APP"
@@ -947,7 +947,10 @@ class Api:
             "notices": ROOT / "DOCS" / "LICENSES.md",
         }
         if kind == "github":
-            return {"ok": False, "error": self._m("github")}
+            import webbrowser
+
+            webbrowser.open("https://github.com/Laplace2-ai/artcraft-ocr")
+            return {"ok": True, "path": "https://github.com/Laplace2-ai/artcraft-ocr"}
         path = targets.get(kind)
         if path is None or not path.exists():
             return {"ok": False, "error": self._m("file_missing", path=path or kind)}
@@ -964,6 +967,7 @@ class Api:
 
     def current_settings(self) -> dict:
         return {"ok": True,
+                "version": VERSION,
                 "host_dir": str(host_folder(self.settings.get("host_dir"))),
                 "host_exe": str(host_folder(self.settings.get("host_dir")) / "photocraft.exe"),
                 "port": self.settings.get("port", 8125),

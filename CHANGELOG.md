@@ -3,6 +3,17 @@
 Newest first. Written by hand; the version here and the version in the window title are the
 same string.
 
+## 1.0.1 — 2026-11-06
+
+- **Fixed: Help → About did nothing.** The menu called `openAbout()`, and that function had never
+  been written — the dialog markup and the Python side were both there, so the click threw
+  `ReferenceError: openAbout is not defined`. Now opens and closes (×, backdrop, Esc), the version
+  is read from the program, GitHub opens the repository, License and Notices open the shipped files.
+- The interface check now clicks Help → About and asserts the panel opens and closes. It was renamed
+  to a no-op function as a negative control: the check fails, as it should.
+- Docs: the 100 % view-scale requirement is now a callout where the capture step is described,
+  not a line inside "known limits". FilmCraft and VectorCraft are marked *coming soon*.
+
 ## 1.0.0 — 2026-11-04
 
 First release.

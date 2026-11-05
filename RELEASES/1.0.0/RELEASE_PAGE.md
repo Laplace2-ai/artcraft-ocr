@@ -61,9 +61,9 @@ No code-signing certificate, so SmartScreen shows "Windows protected your PC" on
 ### Known limits
 
 - Short text (one or two characters) on a large image can be missed; crop tighter to recover it.
-- Sizes assume the document is at 100 % zoom. At other zoom levels the screenshot's pixels are
-  not the document's pixels.
-- PhotoCraft is the only host with an adapter so far. FilmCraft and VectorCraft are planned.
+- **Capture the PhotoCraft window at 100 % zoom.** At 100 % the screenshot's pixels are the
+  document's pixels; at any other zoom every size written back is off by that factor.
+- PhotoCraft is the only host with an adapter so far. **FilmCraft and VectorCraft: coming soon.**
 - Paragraph frame width is measured in the font you choose in the toolbar; if the document uses a
   different font, the width will be off by that difference.
 
@@ -130,8 +130,8 @@ PSD 可以直接打开，但读到的是这个文件的**合并预览图**，不
 ### 已知限制
 
 - 大图上的短文本（一两个字）可能识别不出，裁紧一些可以救回来。
-- 字号假定文档在 100% 缩放。
-- 目前只有 PhotoCraft 有适配器，FilmCraft、VectorCraft 在计划中。
+- **截 PhotoCraft 窗口前把视图调到 100%。** 100% 时截图像素即文档像素；其他比例下写回去的字号都会按该比例偏移。
+- 目前只有 PhotoCraft 有适配器。**FilmCraft、VectorCraft：coming soon。**
 - 区域框宽度按工具栏里选的字体测量；文档里换了字体，宽度会有对应偏差。
 
 ### 声明

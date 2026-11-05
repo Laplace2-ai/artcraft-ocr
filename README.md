@@ -82,9 +82,10 @@ double-clicking `photocraft.exe` opens no channel, so nothing can write to it.
 **Simplified ↔ Traditional** is one button that alternates direction on each press. For
 translation, use the JSON round trip: export, translate anywhere, import.
 
-With the document at **100 %** zoom the sizes match the original. At other zoom levels the
-screenshot's pixels are not the document's pixels, and the size is off by that factor — nothing on
-this side can correct it.
+> **Before you capture the PhotoCraft window, set the view to 100 %.** At 100 % the screenshot's
+> pixels are the document's pixels, so position and size come out right. At any other zoom the
+> picture is scaled, and every size written back is off by that factor — nothing on this side can
+> correct it.
 
 ## Languages
 
@@ -107,7 +108,7 @@ ships no telemetry. The only files it writes are `settings.json` (your settings)
   recovers it.
 - Sizes assume the host document is at 100 % zoom.
 - The window position is decided by the platform.
-- PhotoCraft is the only host with an adapter so far. FilmCraft and VectorCraft are planned.
+- PhotoCraft is the only host with an adapter so far. **FilmCraft and VectorCraft: coming soon.**
 
 ## Build from source
 

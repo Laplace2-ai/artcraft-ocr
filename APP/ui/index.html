@@ -1022,6 +1022,27 @@ $("btnS2T").onclick = () => {
   convert(state.scDirection === "s2t" ? "s2t" : "t2s");
 };
 
+/* About 面板：菜单里一直调 openAbout()，但这个函数从来没写过 —— 点「关于」直接
+   抛 ReferenceError，面板打不开。HTML 和 Python 那一半（open_doc / about）都在，
+   缺的只是这里。 */
+function openAbout() {
+  $("aboutVersion").textContent = state.version || "1.0.0";
+  $("aboutMask").style.display = "block";
+  $("aboutDialog").style.display = "block";
+}
+
+function closeAbout() {
+  $("aboutMask").style.display = "none";
+  $("aboutDialog").style.display = "none";
+}
+
+$("btnAboutClose").onclick = closeAbout;
+$("aboutMask").onclick = closeAbout;
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeAbout(); });
+$("btnGithub").onclick = () => window.pywebview.api.open_doc("github");
+$("btnLicense").onclick = () => window.pywebview.api.open_doc("license");
+$("btnNotices").onclick = () => window.pywebview.api.open_doc("notices");
+
 $("btnClear").onclick = async () => {
   await window.pywebview.api.clear();
   paragraphs = [{ text: "", size: 24, box: null, colour: "#000000", lines: 0 }];
@@ -1057,6 +1078,7 @@ applyLang();   // 先按默认（英文）渲染，设置读回来再覆盖，�
 whenApi((api) => {
   api.current_settings().then((cur) => {
     if (cur && cur.ui_lang) { state.uiLang = cur.ui_lang; }
+    if (cur && cur.version) { state.version = cur.version; }
     applyLang();
   }).catch(() => applyLang());
 });

@@ -63,6 +63,17 @@ window.addEventListener("load", () => {
     // was content-sized, so max-height:100% resolved against an indefinite height
     // and the browser ignored it. width/height attributes give the element an
     // intrinsic size without waiting for a load, so this measures layout only.
+    // Help → About used to throw "openAbout is not defined": the menu called a
+    // function that was never written, and nothing clicked that menu before
+    // shipping. This is the check that would have caught it.
+    document.querySelector('[data-menu="help"]').click();
+    const aboutItem = [...pop.children].find((el) => el.textContent.includes("About") ||
+                                                    el.textContent.includes("关于"));
+    aboutItem.click();
+    ok("about panel opens", $("aboutDialog").style.display === "block");
+    $("btnAboutClose").click();
+    ok("about panel closes", $("aboutDialog").style.display === "none");
+
     const pane = $("preview");
     const tall = document.createElement("img");
     tall.width = 1000; tall.height = 3000;
